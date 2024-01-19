@@ -109,17 +109,6 @@ const logger = (() => {
 
 
 
-
-
-if (cli.flags.endpoint) {
-  config.endpoint = cli.flags.endpoint;
-}
-
-bluebird.resolve(method.call(undefined, cli))
-  .catch(err => {
-    console.error(err.stack);
-    process.exit(1);
-  });
 const { dryRun, table: tableName  } = cli.flags;
 
 function createDynamoDb() {
@@ -157,11 +146,6 @@ async function listTablesCli() {
     return;
   }
   logger.info(tables.join(' '));
-}
-
-function listTablesCli() {
-  return listTables()
-    .then(tables => tables.length === 0 ? console.log('No tables found') : console.log(tables.join(' ')));
 }
 
 async function listTables() {
@@ -250,6 +234,7 @@ async function importSchemaCli() {
   await dynamoDb.createTable(data).promise()
   if (waitForActive) return doWaitForActive();
 }
+
 function filterTable(table) {
   delete table.TableStatus;
   delete table.CreationDateTime;
@@ -427,7 +412,6 @@ async function exportData(tableName, file) {
   await pipeline(stringify, writeStream);
 }
 
-
 async function exportAllCli() {
   return pMap(await listTables(), async (tableName) => {
     logger.info('Exporting schema and data for table', tableName);
@@ -447,36 +431,6 @@ async function wipeDataCli() {
   if (dryRun) return;
 
   return wipeData(tableName, getThroughput(10));
-}
-
-function exportAllCli() {
-  return bluebird.map(listTables(), tableName => {
-    console.error(`Exporting ${tableName}`);
-    return exportSchema(tableName, null)
-      .then(() => exportData(tableName, null))
-  }, { concurrency: 1 });
-}
-
-function wipeDataCli(cli) {
-  const tableName = cli.flags.table;
-
-  if (!tableName) {
-    console.error('--table is requred')
-    cli.showHelp();
-  }
-
-  let throughput = 10;
-
-  if (cli.flags.throughput !== undefined) {
-    if (Number.isInteger(cli.flags.throughput) && cli.flags.throughput > 0) {
-      throughput = cli.flags.throughput;
-    } else {
-      console.error('--throughput must be a positive integer');
-      cli.showHelp();
-    }
-  }
-
-  return wipeData(tableName, throughput);
 }
 
 async function wipeData(tableName, throughput) {
